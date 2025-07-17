@@ -1,0 +1,27 @@
+📚 Bookstore Inventory Report
+===================================
+ID: 3005
+Title: Alice in Wonderland
+Author: Lewis Carroll
+Quantity: 12
+-----------------------------------
+ID: 3003
+Title: The Lion, the Witch and the Wardrobe
+Author: C. S. Lewis
+Quantity: 25
+-----------------------------------
+ID: 3001
+Title: A Tale of Two Cities
+Author: Charles Dickens
+Quantity: 30
+-----------------------------------
+ID: 3004
+Title: The Lord of the Rings
+Author: J.R.R Tolkien
+Quantity: 37
+-----------------------------------
+ID: 3002
+Title: Harry Potter and the Philosopher's Stone
+Author: J.K. Rowling
+Quantity: 40
+-----------------------------------
