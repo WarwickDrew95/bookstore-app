@@ -2,12 +2,13 @@ import sqlite3
 
 def create_database():
     """
-    Creates the database and its tables if they don't exist.
-    Also inserts initial admin user and default books.
+    Creates the SQLite database and required tables if they don't exist.
+    Also inserts an initial admin user and default book records.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
 
+    # Create book table to store book information
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS book (
             id INTEGER PRIMARY KEY,
@@ -17,6 +18,7 @@ def create_database():
         )
     ''')
 
+    # Create users table to store login credentials
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
@@ -24,11 +26,13 @@ def create_database():
         )
     ''')
 
+    # Check if admin user exists, if not create it
     cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
     if not cursor.fetchone():
         cursor.execute('INSERT INTO users(username, password) VALUES (?, ?)', ('admin', 'adm1n'))
         print("✅ Admin account created: username = admin, password = adm1n")
 
+    # Insert initial sample books if they do not already exist
     initial_books = [
         (3001, 'A Tale of Two Cities', 'Charles Dickens', 30),
         (3002, 'Harry Potter and the Philosopher\'s Stone', 'J.K. Rowling', 40),
@@ -48,8 +52,11 @@ def create_database():
 
 def login_user():
     """
-    Prompts the user to log in and verifies credentials.
-    Returns the username if successful, else None.
+    Prompts the user to enter username and password and verifies them against the database.
+    
+    Returns:
+        username (str): The logged-in username if successful.
+        None: If login fails.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
@@ -72,7 +79,8 @@ def login_user():
 
 def display_low_stock_books():
     """
-    Displays books with quantity less than 5.
+    Queries the database for books with quantity less than 5 and displays them.
+    If none are low stock, displays an all-stocked message.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
@@ -90,7 +98,8 @@ def display_low_stock_books():
 
 def export_inventory_report():
     """
-    Exports the book inventory sorted by quantity to a text file.
+    Generates and saves a text report of all books sorted by quantity (ascending).
+    The report is saved as 'inventory_report.txt'.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
@@ -116,7 +125,8 @@ def export_inventory_report():
 
 def add_user_account():
     """
-    Allows admin to create a new employee login.
+    Allows the admin user to add a new user to the users table.
+    Prompts for username and password, checks for duplicates.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
@@ -136,7 +146,8 @@ def add_user_account():
 
 def reset_user_password():
     """
-    Allows admin to reset a user's password.
+    Allows the admin user to reset the password of an existing user.
+    Prompts for username and new password.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
@@ -156,46 +167,64 @@ def reset_user_password():
 
 def add_book_to_inventory():
     """
-    Allows the user to enter a new book into the database.
+    Prompts the user to enter details of a new book and inserts it into the book table.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
 
-    book_id = int(input("Enter book ID: "))
-    title = input("Enter title: ")
-    author = input("Enter author: ")
-    qty = int(input("Enter quantity: "))
+    try:
+        book_id = int(input("Enter book ID: "))
+        title = input("Enter title: ")
+        author = input("Enter author: ")
+        qty = int(input("Enter quantity: "))
 
-    cursor.execute(
-        'INSERT INTO book(id, title, author, qty) VALUES (?, ?, ?, ?)',
-        (book_id, title, author, qty)
-    )
+        cursor.execute(
+            'INSERT INTO book(id, title, author, qty) VALUES (?, ?, ?, ?)',
+            (book_id, title, author, qty)
+        )
 
-    connection.commit()
-    connection.close()
-    print("✅ Book added successfully.")
+        connection.commit()
+        print("✅ Book added successfully.")
+    except ValueError:
+        print("❌ Invalid input. Book ID and quantity must be integers.")
+    except sqlite3.IntegrityError:
+        print("❌ Book ID already exists.")
+    finally:
+        connection.close()
 
 
 def update_book_details():
     """
-    Allows the user to update an existing book's information.
+    Allows the user to update the title, author, or quantity of an existing book.
+    Prompts the user to choose which attribute to update.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
 
-    book_id = int(input("Enter ID of the book to update: "))
+    try:
+        book_id = int(input("Enter ID of the book to update: "))
+    except ValueError:
+        print("❌ Invalid book ID.")
+        connection.close()
+        return
+
     print("Update:\n1. Title\n2. Author\n3. Quantity")
     choice = input("Choice: ")
 
     if choice == "1":
-        new = input("New title: ")
-        cursor.execute('UPDATE book SET title = ? WHERE id = ?', (new, book_id))
+        new_value = input("New title: ")
+        cursor.execute('UPDATE book SET title = ? WHERE id = ?', (new_value, book_id))
     elif choice == "2":
-        new = input("New author: ")
-        cursor.execute('UPDATE book SET author = ? WHERE id = ?', (new, book_id))
+        new_value = input("New author: ")
+        cursor.execute('UPDATE book SET author = ? WHERE id = ?', (new_value, book_id))
     elif choice == "3":
-        new = int(input("New quantity: "))
-        cursor.execute('UPDATE book SET qty = ? WHERE id = ?', (new, book_id))
+        try:
+            new_value = int(input("New quantity: "))
+        except ValueError:
+            print("❌ Quantity must be an integer.")
+            connection.close()
+            return
+        cursor.execute('UPDATE book SET qty = ? WHERE id = ?', (new_value, book_id))
     else:
         print("❌ Invalid choice.")
         connection.close()
@@ -208,12 +237,18 @@ def update_book_details():
 
 def delete_book_by_id():
     """
-    Deletes a book from the database by ID.
+    Deletes a book from the database based on the book ID provided by the user.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
 
-    book_id = int(input("Enter ID of the book to delete: "))
+    try:
+        book_id = int(input("Enter ID of the book to delete: "))
+    except ValueError:
+        print("❌ Invalid book ID.")
+        connection.close()
+        return
+
     cursor.execute('DELETE FROM book WHERE id = ?', (book_id,))
 
     if cursor.rowcount == 0:
@@ -226,7 +261,8 @@ def delete_book_by_id():
 
 def search_books_by_id_or_title():
     """
-    Searches for books by ID or title keyword (case-insensitive).
+    Allows the user to search for books by either ID or title keyword.
+    Displays matching books with their details.
     """
     connection = sqlite3.connect('ebookstore.db')
     cursor = connection.cursor()
@@ -235,7 +271,12 @@ def search_books_by_id_or_title():
     choice = input("Choice: ")
 
     if choice == "1":
-        book_id = int(input("Enter book ID: "))
+        try:
+            book_id = int(input("Enter book ID: "))
+        except ValueError:
+            print("❌ Invalid book ID.")
+            connection.close()
+            return
         cursor.execute('SELECT * FROM book WHERE id = ?', (book_id,))
     elif choice == "2":
         title = input("Enter title keyword: ").strip()
@@ -249,10 +290,7 @@ def search_books_by_id_or_title():
 
     if books:
         for book in books:
-            print(
-                f"📚 ID: {book[0]} | Title: {book[1]} | "
-                f"Author: {book[2]} | Qty: {book[3]}"
-            )
+            print(f"📚 ID: {book[0]} | Title: {book[1]} | Author: {book[2]} | Qty: {book[3]}")
     else:
         print("❌ No books found.")
 
@@ -261,7 +299,8 @@ def search_books_by_id_or_title():
 
 def main():
     """
-    Main function that controls user login and menu.
+    Main program loop. Handles user login and displays the menu with options.
+    Only admin users have access to user management features.
     """
     create_database()
 
